@@ -1,5 +1,5 @@
 #!/bin/bash
 
-KERNEL='uname -r'
+KERNEL= uname -r
 
 echo $KERNEL
