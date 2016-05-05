@@ -1,0 +1,76 @@
+description: Template para despliegue de OpenShift Origin V3
+heat_template_version: '2015-04-30'
+outputs:
+  instance_ip:
+    description: "IP p\xFAblica del master"
+    value:
+      get_attr: [floating_ip, floating_ip_address]
+parameters:
+  key_ssh:
+    constraints:
+    - {custom_constraint: nova.keypair}
+    description: SSH key pair
+    type: string
+  private_network_cidr: {default: 192.168.23.0/24, description: CIDR de la red, label: CIDR
+      de la red, type: string}
+  private_network_name: {default: private-net, description: Red privada, label: Nombre
+      de la red privada, type: string}
+resources:
+  floating_ip:
+    properties: {floating_network: ext-net}
+    type: OS::Neutron::FloatingIP
+  floating_ip_assoc:
+    properties:
+      floatingip_id: {get_resource: floating_ip}
+      port_id: {get_resource: master_port}
+    type: OS::Neutron::FloatingIPAssociation
+  master:
+    properties:
+      admin_user: mediacloud
+      flavor: m1.small
+      image: CentOS 7
+      key_name: {get_param: key_ssh}
+      networks:
+      - port: {get_resource: master_port}
+      user_data: null
+      user_data_format: RAW
+    type: OS::Nova::Server
+  master_port:
+    properties:
+      network: {get_resource: private_network}
+    type: OS::Neutron::Port
+  node1:
+    properties:
+      flavor: m1.small
+      image: CentOS 7
+      key_name: demo-key
+      networks:
+      - network: {get_resource: private_network}
+    type: OS::Nova::Server
+  node2:
+    properties:
+      flavor: m1.small
+      image: CentOS 7
+      key_name: demo-key
+      networks:
+      - network: {get_resource: private_network}
+    type: OS::Nova::Server
+  private_network:
+    properties:
+      name: {get_param: private_network_name}
+    type: OS::Neutron::Net
+  private_subnet:
+    properties:
+      cidr: {get_param: private_network_cidr}
+      dns_nameservers: [8.8.8.8]
+      network_id: {get_resource: private_network}
+    type: OS::Neutron::Subnet
+  router:
+    properties:
+      external_gateway_info: {network: ext-net}
+    type: OS::Neutron::Router
+  router-interface:
+    properties:
+      router_id: {get_resource: router}
+      subnet: {get_resource: private_subnet}
+    type: OS::Neutron::RouterInterface
